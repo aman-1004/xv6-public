@@ -6,6 +6,8 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "spinlock.h"
+#include "stat.h"
 
 int
 sys_fork(void)
@@ -88,4 +90,41 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+// MODIFICATION
+int
+sys_getprocinfo(void)
+{
+  int pid;
+  struct uproc* up;
+  if(argint(0, &pid) < 0)
+    return -1;
+  if(argptr(1, (void*) &up, sizeof(*up)) < 0) 
+    return -1;
+
+  extern struct {
+    struct spinlock lock;
+    struct proc proc[NPROC];
+  } ptable;
+
+  struct proc* p;
+  if (pid < 1) return -1;
+  int found = 0;
+
+  for(p = ptable.proc; p && p < &ptable.proc[NPROC]; p++) {
+    if (found) return p->pid;
+    if(p->pid != pid) continue;
+    up->pid = p->pid;
+    int i;
+    for(i=0; i<15 && p->name[i]; i++) {
+      up->name[i] = p->name[i];
+    }
+    up->name[i] = 0;
+    
+    up->next = -1;
+    found = 1;
+  }
+  if (found) return 0;
+  return -1;
 }

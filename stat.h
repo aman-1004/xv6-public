@@ -9,3 +9,10 @@ struct stat {
   short nlink; // Number of links to file
   uint size;   // Size of file in bytes
 };
+
+// MODIFICATION
+struct uproc {
+  int pid;
+  char name[16];
+  int next;
+};
