@@ -115,14 +115,19 @@ sys_getprocinfo(void)
   for(p = ptable.proc; p && p < &ptable.proc[NPROC]; p++) {
     if (found) return p->pid;
     if(p->pid != pid) continue;
-    up->pid = p->pid;
+
+    // Copy the attributes from proc to uproc
+    up->pid = p->pid; 
     int i;
     for(i=0; i<15 && p->name[i]; i++) {
       up->name[i] = p->name[i];
     }
     up->name[i] = 0;
-    
-    up->next = -1;
+    /* up->next = -1; */
+    up->state = (int) p->state;
+    up->ppid = 0;
+    if (p->parent) up->ppid = p->parent->pid;
+    up->sz = p->sz;
     found = 1;
   }
   if (found) return 0;

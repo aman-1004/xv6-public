@@ -11,8 +11,16 @@ struct stat {
 };
 
 // MODIFICATION
+
+// const static char* states[] = { "UNUSED", "EMBRYO", "SLEEPING", "RUNNABLE", "RUNNING", "ZOMBIE" };
+
 struct uproc {
-  int pid;
   char name[16];
-  int next;
+  int pid;
+  int ppid;
+  struct uproc *parent;
+  uint sz; //size of process memory
+  uint state;
+  /* enum uprocstate state; */
 };
+
