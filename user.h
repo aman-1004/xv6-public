@@ -26,6 +26,7 @@ int sleep(int);
 int uptime(void);
 int getprocinfo(int n, struct uproc* up); // MODIFICATION
 int history(char*, int n); // MODIFICATION
+int wait2(int*,int*,int*); // MODIFICATION
 
 // ulib.c
 int stat(const char*, struct stat*);

@@ -101,7 +101,7 @@ void eraseCurrentLineOnScreen(void)
 */
 void copyCharsToBeMovedToOldBuffer(void)
 {
-  oldBufferLength = input.rightmost - input.r;
+  oldBufferLength = input.e - input.r;
   for (uint i = 0; i < oldBufferLength; i++)
   {
     oldBuf[i] = input.buf[(input.r + i) % INPUT_BUF];
@@ -337,7 +337,7 @@ consoleintr(int (*getc)(void))
       { // current history means the oldest possible will be MAX_HISTORY-1
         eraseCurrentLineOnScreen();
 
-        // store the currently entered command (in the terminal) to the oldbuf
+        //store the currently entered command (in the terminal) to the oldbuf
         if (historyBufferArray.currentHistory == -1)
           copyCharsToBeMovedToOldBuffer();
 

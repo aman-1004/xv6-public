@@ -144,3 +144,19 @@ sys_history(void)
   argint(1,&historyId);
   return getCmdFromHistory(buffer,historyId);
 }
+
+// MODIFICATION
+
+int 
+sys_wait2(void)
+{
+  int *retime, *rutime, *stime;
+  if (argptr(0, (void*)&retime, sizeof(retime)) < 0)
+    return -1;
+  if (argptr(1, (void*)&rutime, sizeof(retime)) < 0)
+    return -1;
+  if (argptr(2, (void*)&stime, sizeof(stime)) < 0)
+    return -1;
+  
+  return waitstats(retime, rutime, stime);
+}
