@@ -40,6 +40,22 @@ struct
   int currentHistory;                     // holds the current history view -> displacement from the last command index
 } historyBufferArray;
 
+#define INPUT_BUF 128
+struct {
+  char buf[INPUT_BUF];
+  uint r;  // Read index
+  uint w;  // Write index
+  uint e;  // Edit index
+ 
+  uint rightmost; // the rightmost index of the current command
+} input;
+
+
+//PAGEBREAK: 50
+#define BACKSPACE 0x100
+#define CRTPORT 0x3d4
+static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
+
 static void
 printint(int xx, int base, int sign)
 {
@@ -71,11 +87,93 @@ uint oldBufferLength;
 
 char buf2[INPUT_BUF];
 
-struct {
-  uint lengths[MAX_HISTORY]; // store the length of each command 
-  char commands[MAX_HISTORY][MAX_CMD_LEN]; // store the actual commands
+void eraseCurrentLineOnScreen(void)
+{
+  int length = input.e - input.r;
+  while (length--)
+  {
+    consputc(BACKSPACE);
+  }
+}
 
-};
+/*
+  Copy input.buf into oldBuf
+*/
+void copyCharsToBeMovedToOldBuffer(void)
+{
+  oldBufferLength = input.rightmost - input.r;
+  for (uint i = 0; i < oldBufferLength; i++)
+  {
+    oldBuf[i] = input.buf[(input.r + i) % INPUT_BUF];
+  }
+}
+
+/*
+  clear input buffer
+*/
+void eraseContentOnInputBuffer()
+{
+  input.rightmost = input.r;
+  input.e = input.r;
+}
+
+/*
+  print bufToPrintOnScreen on-screen
+*/
+void copyBufferToScreen(char *bufToPrintOnScreen, uint length)
+{
+  uint i = 0;
+  while (length--)
+  {
+    consputc(bufToPrintOnScreen[i]);
+    i++;
+  }
+}
+
+/*
+  Copy bufToSaveInInput to input.buf
+  Set input.e and input.rightmost
+  assumes input.r == input.w == input.rightmost == input.e
+*/
+void copyBufferToInputBuffer(char *bufToSaveInInput, uint length)
+{
+  for (uint i = 0; i < length; i++)
+  {
+    input.buf[(input.r + i) % INPUT_BUF] = bufToSaveInInput[i];
+  }
+
+  input.e = input.r + length;
+  input.rightmost = input.e;
+}
+
+/*
+  Copy current command in input.buf to historyBufferArray (saved history)
+  @param length - length of command to be saved
+*/
+
+void saveCommandInHistory()
+{
+  uint len = input.e - input.r - 1; // -1 to remove the last '\n' character
+  if (len == 0)
+    return; // to avoid blank commands to store in history
+
+  historyBufferArray.currentHistory = -1; // reseting the users history current viewed
+
+  // understood
+  if (historyBufferArray.numOfCommmandsInMem < MAX_HISTORY)
+  {
+    historyBufferArray.numOfCommmandsInMem++;
+    // when we get to MAX_HISTORY commands in memory we keep on inserting to the array in a circular manner
+  }
+  historyBufferArray.lastCommandIndex = (historyBufferArray.lastCommandIndex - 1) % MAX_HISTORY;
+  historyBufferArray.lengthsArr[historyBufferArray.lastCommandIndex] = len;
+
+  // do not want to save in memory the last char '/n'
+  for (uint i = 0; i < len; i++)
+  {
+    historyBufferArray.bufferArr[historyBufferArray.lastCommandIndex][i] = input.buf[(input.r + i) % INPUT_BUF];
+  }
+}
 
 // Print to the console. only understands %d, %x, %p, %s.
 void
@@ -150,10 +248,7 @@ panic(char *s)
     ;
 }
 
-//PAGEBREAK: 50
-#define BACKSPACE 0x100
-#define CRTPORT 0x3d4
-static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
+
 
 // outputs a character to the console taking care of newline and /n
 static void
@@ -207,15 +302,7 @@ consputc(int c)
   cgaputc(c);
 }
 
-#define INPUT_BUF 128
-struct {
-  char buf[INPUT_BUF];
-  uint r;  // Read index
-  uint w;  // Write index
-  uint e;  // Edit index
- 
-  uint rightmost; // the rightmost index of the current command
-} input;
+
 
 #define C(x)  ((x)-'@')  // Control-x
 
@@ -376,93 +463,7 @@ consoleinit(void)
   historyBufferArray.lastCommandIndex = 0;
 }
 
-void eraseCurrentLineOnScreen(void)
-{
-  int length = input.e - input.r;
-  while (length--)
-  {
-    consputc(BACKSPACE);
-  }
-}
 
-/*
-  Copy input.buf into oldBuf
-*/
-void copyCharsToBeMovedToOldBuffer(void)
-{
-  oldBufferLength = input.rightmost - input.r;
-  for (uint i = 0; i < oldBufferLength; i++)
-  {
-    oldBuf[i] = input.buf[(input.r + i) % INPUT_BUF];
-  }
-}
-
-/*
-  clear input buffer
-*/
-void eraseContentOnInputBuffer()
-{
-  input.rightmost = input.r;
-  input.e = input.r;
-}
-
-/*
-  print bufToPrintOnScreen on-screen
-*/
-void copyBufferToScreen(char *bufToPrintOnScreen, uint length)
-{
-  uint i = 0;
-  while (length--)
-  {
-    consputc(bufToPrintOnScreen[i]);
-    i++;
-  }
-}
-
-/*
-  Copy bufToSaveInInput to input.buf
-  Set input.e and input.rightmost
-  assumes input.r == input.w == input.rightmost == input.e
-*/
-void copyBufferToInputBuffer(char *bufToSaveInInput, uint length)
-{
-  for (uint i = 0; i < length; i++)
-  {
-    input.buf[(input.r + i) % INPUT_BUF] = bufToSaveInInput[i];
-  }
-
-  input.e = input.r + length;
-  input.rightmost = input.e;
-}
-
-/*
-  Copy current command in input.buf to historyBufferArray (saved history)
-  @param length - length of command to be saved
-*/
-
-void saveCommandInHistory()
-{
-  uint len = input.e - input.r - 1; // -1 to remove the last '\n' character
-  if (len == 0)
-    return; // to avoid blank commands to store in history
-
-  historyBufferArray.currentHistory = -1; // reseting the users history current viewed
-
-  // understood
-  if (historyBufferArray.numOfCommmandsInMem < MAX_HISTORY)
-  {
-    historyBufferArray.numOfCommmandsInMem++;
-    // when we get to MAX_HISTORY commands in memory we keep on inserting to the array in a circular manner
-  }
-  historyBufferArray.lastCommandIndex = (historyBufferArray.lastCommandIndex - 1) % MAX_HISTORY;
-  historyBufferArray.lengthsArr[historyBufferArray.lastCommandIndex] = len;
-
-  // do not want to save in memory the last char '/n'
-  for (uint i = 0; i < len; i++)
-  {
-    historyBufferArray.bufferArr[historyBufferArray.lastCommandIndex][i] = input.buf[(input.r + i) % INPUT_BUF];
-  }
-}
 
 
 int getCmdFromHistory(char *buffer, int historyId)
