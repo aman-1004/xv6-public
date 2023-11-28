@@ -133,3 +133,14 @@ sys_getprocinfo(void)
   if (found) return 0;
   return -1;
 }
+
+// MODIFICATION
+int 
+sys_history(void)
+{
+  char* buffer;
+  int historyId;
+  argptr(0,&buffer,1);
+  argint(1,&historyId);
+  return getCmdFromHistory(buffer,historyId);
+}
