@@ -142,7 +142,7 @@ sys_history(void)
   int historyId;
   argptr(0,&buffer,1);
   argint(1,&historyId);
-  return getCmdFromHistory(buffer,historyId);
+  return getCommandFromHistory(buffer,historyId);
 }
 
 // MODIFICATION
