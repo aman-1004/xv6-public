@@ -3,7 +3,6 @@
 
 #define MAX_HISTORY 16
 #define INPUT_BUF 128
-#define INPUT
 
 char cmdFromHistory[INPUT_BUF];
 
@@ -22,4 +21,7 @@ void printHistory()
   }
 }
 
-
+int main() {
+  printHistory();
+  exit();
+}
