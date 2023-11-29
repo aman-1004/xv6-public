@@ -63,7 +63,7 @@ void printHistory()
   for (i = 0; i < MAX_HISTORY; i++)
   {
     // 0 == newest command == historyId (always)
-    if (history(cmdFromHistory, MAX_HISTORY - i - 1) == 0)
+    if (history(cmdFromHistory, i) == 0)
     { // this is the sys call
         count++;
         printf(1, "%d: %s\n", count, cmdFromHistory);

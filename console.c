@@ -16,7 +16,25 @@
 #include "x86.h"
 #include "console.h"
 
+
+#define MAX_HISTORY 16
+#define INPUT_BUF 128
+#define UP_ARROW 226
+#define DOWN_ARROW 227
+#define BACKSPACE 0x100
+#define CRTPORT 0x3d4
+#define C(x)  ((x)-'@')  // Control-x
+
 static void consputc(int);
+
+
+void eraseCurrentLineOnScreen(void);
+void moveToCurrentBuffer(void);
+void eraseContentOnInputBuffer();
+void copyBufferToScreen(char *bufToPrintOnScreen, uint length);
+void copyBufferToInputBuffer(char *bufToSaveInInput, uint length);
+void addCommandToHistory();
+int getCommandFromHistory(char *buffer, int historyId);
 
 static int panicked = 0;
 
@@ -35,15 +53,15 @@ struct {
 // MODIFICATION
 struct
 {
-  char command[MAX_HISTORY][INPUT_BUF]; // holds the actual command strings -
+  char command[MAX_HISTORY][INPUT_BUF]; // holds the actual command strings,  we will start from 0-
   uint commandLength[MAX_HISTORY];      // this will hold the length of each command string
   uint lastCommandIndex;                // the index of the last command entered to history
   int numOfCommmandsInHistory;          // number of history commands stored
   int displacement;                     // how much moved from the last command index
 } historyStored;
 
-char oldBuf[INPUT_BUF]; // this will hold the details of the command that we were typing before accessing the history
-uint oldBufferLength;
+char currentBuffer[INPUT_BUF]; // this will hold the details of the command that we were typing before accessing the history
+uint currentBufferLength;
 
 //
 
@@ -211,7 +229,7 @@ void
 consoleintr(int (*getc)(void))
 {
   int c, doprocdump = 0;
-  uint tempIndex;
+  uint indexOfCommandToBeAccessed;
 
   acquire(&cons.lock);
   while((c = getc()) >= 0){
@@ -238,15 +256,15 @@ consoleintr(int (*getc)(void))
       { // current history means the oldest possible will be MAX_HISTORY-1
         eraseCurrentLineOnScreen();
 
-        //store the currently entered command (in the terminal) to the oldbuf
+        //store the currently entered command (in the terminal) to the currentBuffer
         if (historyStored.displacement == -1)
-          moveToOldBuffer();
+          moveToCurrentBuffer();
 
         eraseContentOnInputBuffer();
         historyStored.displacement++;
-        tempIndex = (historyStored.lastCommandIndex + historyStored.displacement) % MAX_HISTORY;
-        copyBufferToScreen(historyStored.command[tempIndex], historyStored.commandLength[tempIndex]);
-        copyBufferToInputBuffer(historyStored.command[tempIndex], historyStored.commandLength[tempIndex]);
+        indexOfCommandToBeAccessed = (historyStored.lastCommandIndex - historyStored.displacement + MAX_HISTORY) % MAX_HISTORY;
+        copyBufferToScreen(historyStored.command[indexOfCommandToBeAccessed], historyStored.commandLength[indexOfCommandToBeAccessed]);
+        copyBufferToInputBuffer(historyStored.command[indexOfCommandToBeAccessed], historyStored.commandLength[indexOfCommandToBeAccessed]);
       }
       break;
     case DOWN_ARROW:
@@ -257,17 +275,17 @@ consoleintr(int (*getc)(void))
 
       case 0: // get string from old buf
         eraseCurrentLineOnScreen();
-        copyBufferToInputBuffer(oldBuf, oldBufferLength);
-        copyBufferToScreen(oldBuf, oldBufferLength);
+        copyBufferToInputBuffer(currentBuffer, currentBufferLength);
+        copyBufferToScreen(currentBuffer, currentBufferLength);
         historyStored.displacement--;
         break;
 
       default:
         eraseCurrentLineOnScreen();
         historyStored.displacement--;
-        tempIndex = (historyStored.lastCommandIndex + historyStored.displacement) % MAX_HISTORY;
-        copyBufferToScreen(historyStored.command[tempIndex], historyStored.commandLength[tempIndex]);
-        copyBufferToInputBuffer(historyStored.command[tempIndex], historyStored.commandLength[tempIndex]);
+        indexOfCommandToBeAccessed = (historyStored.lastCommandIndex - historyStored.displacement +MAX_HISTORY) % MAX_HISTORY;
+        copyBufferToScreen(historyStored.command[indexOfCommandToBeAccessed], historyStored.commandLength[indexOfCommandToBeAccessed]);
+        copyBufferToInputBuffer(historyStored.command[indexOfCommandToBeAccessed], historyStored.commandLength[indexOfCommandToBeAccessed]);
         break;
       }
       break;
@@ -277,7 +295,7 @@ consoleintr(int (*getc)(void))
         input.buf[input.e++ % INPUT_BUF] = c;
         consputc(c);
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
-          saveCommandInHistory();
+          addCommandToHistory();
           input.w = input.e;
           wakeup(&input.r);
         }
@@ -376,19 +394,19 @@ void eraseCurrentLineOnScreen(void)
 }
 
 /*
-  Copy input.buf into oldBuf
+  Copy input.buf into currentBuffer to access the command which was not executed
 */
-void moveToOldBuffer(void)
+void moveToCurrentBuffer(void)
 {
-  oldBufferLength = input.e - input.r;
-  for (uint i = 0; i < oldBufferLength; i++)
+  currentBufferLength = input.e - input.r;
+  for (uint i = 0; i < currentBufferLength; i++)
   {
-    oldBuf[i] = input.buf[(input.r + i) % INPUT_BUF];
+    currentBuffer[i] = input.buf[(input.r + i) % INPUT_BUF];
   }
 }
 
 /*
-  clear input buffer
+  clear input buffer basically set e = r;
 */
 void eraseContentOnInputBuffer()
 {
@@ -425,10 +443,10 @@ void copyBufferToInputBuffer(char *bufToSaveInInput, uint length)
   Copy current command in input.buf to historyStored (saved history)
 */
 
-void saveCommandInHistory()
+void addCommandToHistory()
 {
-  uint len = input.e - input.r - 1; // -1 to remove the last '\n' character
-  if (len == 0)
+  uint lengthcommand = input.e - input.r - 1; // -1 to remove the last '\n' character
+  if (lengthcommand == 0)
     return; // to avoid blank commands to store in history
 
   historyStored.displacement = -1; // reseting the users history current viewed
@@ -438,11 +456,11 @@ void saveCommandInHistory()
     historyStored.numOfCommmandsInHistory++;
     // when we get to MAX_HISTORY commands in memory we keep on inserting to the array in a circular manner
   }
-  historyStored.lastCommandIndex = (historyStored.lastCommandIndex - 1) % MAX_HISTORY;
-  historyStored.commandLength[historyStored.lastCommandIndex] = len;
+  historyStored.lastCommandIndex = (historyStored.lastCommandIndex + 1) % MAX_HISTORY;
+  historyStored.commandLength[historyStored.lastCommandIndex] = lengthcommand;
 
   // do not want to save in memory the last char '/n'
-  for (uint i = 0; i < len; i++)
+  for (uint i = 0; i < lengthcommand; i++)
   {
     historyStored.command[historyStored.lastCommandIndex][i] = input.buf[(input.r + i) % INPUT_BUF];
   }
@@ -461,8 +479,12 @@ int getCommandFromHistory(char *buffer, int historyId)
 
   // to ensure that every byte in the buffer array is set to the null character.
   memset(buffer, '\0', INPUT_BUF);
-  int tempIndex = (historyStored.lastCommandIndex + historyId) % MAX_HISTORY;
-  memmove(buffer, historyStored.command[tempIndex], historyStored.commandLength[tempIndex]);
+  int index_Where_Specified_HistoryId_Stored = (historyStored.lastCommandIndex - historyId + MAX_HISTORY) % MAX_HISTORY;
+
+  for (uint i = 0; i < historyStored.commandLength[index_Where_Specified_HistoryId_Stored]; i++)
+  {
+    buffer[i % INPUT_BUF] = historyStored.command[index_Where_Specified_HistoryId_Stored][i];
+  }
   return 0;
 }
 
