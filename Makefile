@@ -183,6 +183,8 @@ UPROGS=\
 	_zombie\
 	_ps\
 	_wait2test\
+	_history\
+
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

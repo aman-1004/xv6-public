@@ -14,7 +14,6 @@
 #include "mmu.h"
 #include "proc.h"
 #include "x86.h"
-#include "console.h"
 
 
 #define MAX_HISTORY 16
