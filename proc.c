@@ -538,7 +538,7 @@ procdump(void)
 }
 
 int 
-waitstats(int *retime, int *rutime, int *stime) 
+wait2stats(int *retime, int *rutime, int *stime) 
 {
   struct proc *p; // child process
   int havekids, pid;
@@ -584,7 +584,7 @@ waitstats(int *retime, int *rutime, int *stime)
 }
 
 void
-updatestats() 
+update_process_statistics() 
 {
   struct proc *p;
   acquire(&ptable.lock);

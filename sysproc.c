@@ -158,5 +158,5 @@ sys_wait2(void)
   if (argptr(2, (void*)&stime, sizeof(stime)) < 0)
     return -1;
   
-  return waitstats(retime, rutime, stime);
+  return wait2stats(retime, rutime, stime);
 }
