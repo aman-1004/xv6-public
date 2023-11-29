@@ -137,6 +137,7 @@ static int (*syscalls[])(void) = {
 
 /*
  * MODIFICATION: syscall_names contain string names of each syscall
+ */
 
 static char* syscall_names[] = {
 [SYS_fork]    "fork",
@@ -161,7 +162,6 @@ static char* syscall_names[] = {
 [SYS_mkdir]   "mkdir",
 [SYS_close]   "close",
 };
- */
 
 void
 syscall(void)
@@ -172,8 +172,8 @@ syscall(void)
   num = curproc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     curproc->tf->eax = syscalls[num]();
-     /* MODIFICATION: printing name of sycall with return value. */
-    // cprintf("%s -> %d\n", syscall_names[num], curproc->tf->eax);
+    /* MODIFICATION: printing name of sycall with return value. */
+    cprintf("%s -> %d\n", syscall_names[num], curproc->tf->eax);
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             curproc->pid, curproc->name, num);
