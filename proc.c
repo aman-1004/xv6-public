@@ -88,6 +88,10 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->ctime = ticks;
+  p->rutime = 0;
+  p->retime = 0;
+  p->stime = 0;
 
   release(&ptable.lock);
 
@@ -267,11 +271,7 @@ exit(void)
   panic("zombie exit");
 }
 
-// Wait for a child process to exit and return its pid.
-// Return -1 if this process has no children.
-int
-wait(void)
-{
+int waitCommon(int flag,int* retime,int* rutime,int*stime){
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
@@ -290,11 +290,19 @@ wait(void)
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
+        if(flag==1){
+          *retime = p->retime;
+          *rutime = p->rutime;
+          *stime = p->stime;
+        }
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+        p->stime = 0;
+        p->retime = 0;
+        p->rutime = 0;
         release(&ptable.lock);
         return pid;
       }
@@ -309,6 +317,14 @@ wait(void)
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
+}
+// Wait for a child process to exit and return its pid.
+// Return -1 if this process has no children.
+int
+wait(void)
+{
+  int retime, rutime, stime;
+  return waitCommon(0, &retime, &rutime, &stime);
 }
 
 //PAGEBREAK: 42
@@ -531,4 +547,12 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+
+
+int 
+wait2(int *retime, int *rutime, int *stime) 
+{
+  return waitCommon(1, retime, rutime, stime);
 }

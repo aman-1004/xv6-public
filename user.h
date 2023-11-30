@@ -1,3 +1,4 @@
+#include "types.h"
 struct stat;
 struct uproc;
 struct rtcdate;
@@ -25,6 +26,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int getprocinfo(int n, struct uproc* up); // MODIFICATION
+int wait2(int* ,int*, int*); // Modificaton
 
 // ulib.c
 int stat(const char*, struct stat*);

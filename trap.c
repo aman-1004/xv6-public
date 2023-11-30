@@ -14,6 +14,11 @@ extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
 
+struct {
+  struct spinlock lock;
+  struct proc proc[NPROC];
+} ptable;
+
 void
 tvinit(void)
 {
@@ -51,6 +56,28 @@ trap(struct trapframe *tf)
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
+      // modified 
+
+      struct proc *p;
+      acquire(&ptable.lock);
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        switch(p->state) {
+          case SLEEPING:
+            p->stime++;
+            break;
+          case RUNNABLE:
+            p->retime++;
+            break;
+          case RUNNING:
+            p->rutime++;
+            break;
+          default:
+            ;
+        }
+      }
+      release(&ptable.lock);
+      // 
+
       wakeup(&ticks);
       release(&tickslock);
     }
