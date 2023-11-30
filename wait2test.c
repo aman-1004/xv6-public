@@ -7,7 +7,13 @@ int main(void)
     pid = fork();
     if (pid == 0){
 
+        int sum = 0;
         for(long long i = 0; i < (long long) 1e15; i++){
+            for(long long j = 0; j < (long long) 1e15; j++)
+            {
+                sum+=10;
+                sum-=10;
+            }
         }
         sleep(10);
     }

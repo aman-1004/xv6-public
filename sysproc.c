@@ -144,5 +144,5 @@ int sys_wait2(void)
     return -1;
   if (argptr(2, (void*)&stime, sizeof(stime)) < 0)
     return -1;
-  return wait2(retime, rutime, stime);
+  return wait2_(retime, rutime, stime);
 }

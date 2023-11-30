@@ -551,8 +551,8 @@ procdump(void)
 
 
 
-int 
-wait2(int *retime, int *rutime, int *stime) 
+
+int wait2_(int *retime, int *rutime, int *stime) 
 {
   return waitCommon(1, retime, rutime, stime);
 }
