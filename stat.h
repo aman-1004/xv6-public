@@ -18,7 +18,7 @@ struct uproc {
   char name[16];
   int pid;
   int ppid;
-  struct uproc *parent;
+  // struct uproc *parent;
   uint sz; //size of process memory
   uint state;
   /* enum uprocstate state; */

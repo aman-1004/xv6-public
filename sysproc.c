@@ -112,8 +112,12 @@ sys_getprocinfo(void)
   if (pid < 1) return -1;
   int found = 0;
 
+  acquire(&ptable.lock);
   for(p = ptable.proc; p && p < &ptable.proc[NPROC]; p++) {
-    if (found) return p->pid;
+    if (found) {
+      release(&ptable.lock);
+      return p->pid;
+    }
     if(p->pid != pid) continue;
 
     // Copy the attributes from proc to uproc
