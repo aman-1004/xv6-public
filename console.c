@@ -195,37 +195,37 @@ struct {
 #define DOWN_KEY 227
 
 
-char historyList[MAX_HISTORY][INPUT_BUF+1];
-int historyIndex;
-int historyLimit;
+struct {
+  char at[MAX_HISTORY][INPUT_BUF+1];
+  int index;
+  int limit;
+} history;
 
 static void initHistory(void) {
-  safestrcpy(historyList[0], "ls", strlen("ls")+1);
-  safestrcpy(historyList[1], "echo hello", strlen("echo hello")+1);
-  historyLimit = 1;
-  historyIndex = historyLimit +1;
+  history.limit = 1;
+  history.index = history.limit +1;
 }
 
 static void pushBackHistory(void) {
-  int next = historyLimit +1;
+  int next = history.limit +1;
   int i = input.w;
   int j = input.e;
   int k = 0;
   if (i == j || input.buf[i] == ' ' || input.buf[i] == '\n') return;
   while(i!=j && input.buf[i] != '\n') {
     char c = input.buf[i];
-    historyList[next][k] = c;    
+    history.at[next][k] = c;    
     i = (i+1) % INPUT_BUF;
     k++;
   }
-  historyLimit++;
-  historyIndex = historyLimit +1;
+  history.limit++;
+  history.index = history.limit +1;
 }
 
 /* static int retrieveLastHistory(char* buf) { */
-/*   if (historyIndex >= 0 && historyIndex <= historyLimit) { */
-/*     safestrcpy(buf, historyList[historyIndex], strlen(historyList[historyIndex])); */
-/*     historyIndex--; */
+/*   if (history.index >= 0 && history.index <= history.limit) { */
+/*     safestrcpy(buf, history.at[history.index], strlen(history.at[history.index])); */
+/*     history.index--; */
 /*     return 1; */
 /*   } */
 /*   return 0; */
@@ -260,35 +260,35 @@ consoleintr(int (*getc)(void))
       }
       break;
     case UP_KEY:
-      if (historyIndex - 1 < 0) break;
+      if (history.index - 1 < 0) break;
       while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n') {
         input.e--;
         consputc(BACKSPACE);
       }
-      int j = --historyIndex;
-      len = strlen(historyList[j]);
+      int j = --history.index;
+      len = strlen(history.at[j]);
       for(int i=0; i<len; i++) {
-        int ch = historyList[j][i];
+        int ch = history.at[j][i];
         input.buf[input.e++ % INPUT_BUF] = ch;
         consputc(ch);
       }
-      /* if (historyIndex > 0) historyIndex--; */
+      /* if (history.index > 0) history.index--; */
       break;
 
     case DOWN_KEY:
-      if (historyIndex > historyLimit) break;
+      if (history.index > history.limit) break;
       while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n') {
         input.e--;
         consputc(BACKSPACE);
       }
 
-      if (++historyIndex > historyLimit) break;
-      j = historyIndex;
-      len = strlen(historyList[j]);
+      if (++history.index > history.limit) break;
+      j = history.index;
+      len = strlen(history.at[j]);
       for(int i=0; i<len; i++) {
-        int ch = historyList[j][i];
+        int ch = history.at[j][i];
         input.buf[input.e++ % INPUT_BUF] = ch;
         consputc(ch);
       }
