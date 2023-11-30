@@ -137,3 +137,31 @@ sys_getprocinfo(void)
   if (found) return 0;
   return -1;
 }
+
+#define INPUT_BUF 128
+#define MAX_HISTORY 128
+#define UP_KEY 226
+#define DOWN_KEY 227
+
+int
+sys_history(void)
+{
+  extern struct {
+    char at[MAX_HISTORY][INPUT_BUF+1];
+    int index;
+    int limit;
+  } history;
+
+  int index;
+  char* historyList;
+
+  if(argint(0, &index) < 0)
+    return -1;
+  if(argptr(1, (void*) &historyList, sizeof(*historyList)) < 0) 
+    return -1;
+
+  if(index > history.limit) return -1;
+  safestrcpy(historyList, history.at[index], strlen(history.at[index])+1);
+  return index+1;
+}
+

@@ -202,7 +202,7 @@ struct {
 } history;
 
 static void initHistory(void) {
-  history.limit = 1;
+  history.limit = -1;
   history.index = history.limit +1;
 }
 
