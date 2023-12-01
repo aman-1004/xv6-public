@@ -41,6 +41,7 @@ idtinit(void)
 void
 trap(struct trapframe *tf)
 {
+  // trap occurs on system calls / interrupts / program fault
   if(tf->trapno == T_SYSCALL){
     if(myproc()->killed)
       exit();
@@ -52,6 +53,8 @@ trap(struct trapframe *tf)
   }
 
   switch(tf->trapno){
+    // timer interrupt: timer is special hardware interrupt and is generated periodicaly to trap to kernel.
+    // a process when context switched , whenever timer interrupt increase ticks
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
       acquire(&tickslock);
