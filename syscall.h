@@ -23,5 +23,4 @@
 // MODIFICATION
 #define SYS_getprocinfo 22
 #define SYS_history 23
-
-#define SYS_wait2 23
+#define SYS_wait2 24
