@@ -15,6 +15,7 @@
 #include "proc.h"
 #include "x86.h"
 
+
 static void consputc(int);
 
 static int panicked = 0;
@@ -188,6 +189,51 @@ struct {
 
 #define C(x)  ((x)-'@')  // Control-x
 
+// MODIFICATION {
+#define MAX_HISTORY 128
+#define UP_KEY 226
+#define DOWN_KEY 227
+
+
+struct {
+  char at[MAX_HISTORY][INPUT_BUF+1];
+  int index;
+  int limit;
+} history;
+
+static void initHistory(void) {
+  history.limit = -1;
+  history.index = history.limit +1;
+}
+
+static void pushBackHistory(void) {
+  int next = history.limit +1;
+  int i = input.w;
+  int j = input.e;
+  int k = 0;
+  if (i == j || input.buf[i] == ' ' || input.buf[i] == '\n') return;
+  while(i!=j && input.buf[i] != '\n') {
+    char c = input.buf[i];
+    history.at[next][k] = c;    
+    i = (i+1) % INPUT_BUF;
+    k++;
+  }
+  history.limit++;
+  history.index = history.limit +1;
+}
+
+/* static int retrieveLastHistory(char* buf) { */
+/*   if (history.index >= 0 && history.index <= history.limit) { */
+/*     safestrcpy(buf, history.at[history.index], strlen(history.at[history.index])); */
+/*     history.index--; */
+/*     return 1; */
+/*   } */
+/*   return 0; */
+/* } */
+
+// } MODIFICATION 
+
+int len;
 void
 consoleintr(int (*getc)(void))
 {
@@ -213,12 +259,51 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
+    case UP_KEY:
+      if (history.index - 1 < 0) break;
+      while(input.e != input.w &&
+            input.buf[(input.e-1) % INPUT_BUF] != '\n') {
+        input.e--;
+        consputc(BACKSPACE);
+      }
+      int j = --history.index;
+      len = strlen(history.at[j]);
+      for(int i=0; i<len; i++) {
+        int ch = history.at[j][i];
+        input.buf[input.e++ % INPUT_BUF] = ch;
+        consputc(ch);
+      }
+      /* if (history.index > 0) history.index--; */
+      break;
+
+    case DOWN_KEY:
+      if (history.index > history.limit) break;
+      while(input.e != input.w &&
+            input.buf[(input.e-1) % INPUT_BUF] != '\n') {
+        input.e--;
+        consputc(BACKSPACE);
+      }
+
+      if (++history.index > history.limit) break;
+      j = history.index;
+      len = strlen(history.at[j]);
+      for(int i=0; i<len; i++) {
+        int ch = history.at[j][i];
+        input.buf[input.e++ % INPUT_BUF] = ch;
+        consputc(ch);
+      }
+      break;
+
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
         input.buf[input.e++ % INPUT_BUF] = c;
+        // For checking the value for UP_KEY
+        /* int d = c; */
+        /* while(d) consputc('0' + d%10), d/=10; */
         consputc(c);
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
+          pushBackHistory();
           input.w = input.e;
           wakeup(&input.r);
         }
@@ -288,6 +373,7 @@ consolewrite(struct inode *ip, char *buf, int n)
 void
 consoleinit(void)
 {
+  initHistory();
   initlock(&cons.lock, "console");
 
   devsw[CONSOLE].write = consolewrite;
